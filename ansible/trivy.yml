@@ -1,0 +1,36 @@
+---
+- name: Install Trivy
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install required dependencies
+      package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - curl
+        - gnupg
+        - apt-transport-https
+
+    - name: Add Aqua Security GPG key
+      ansible.builtin.command: >
+        bash -c "curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-keyring.gpg"
+      args:
+        creates: /usr/share/keyrings/trivy-keyring.gpg
+
+    - name: Add Trivy APT repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/trivy.list
+        content: "deb [signed-by=/usr/share/keyrings/trivy-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb focal main\n"
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Update APT cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Trivy
+      ansible.builtin.apt:
+        name: trivy
+        state: present
